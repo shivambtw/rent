@@ -60,7 +60,7 @@ pip install -r requirements.txt
 
 ```
 python -m venv .venv
-.venv\Scriptsctivate.bat
+.venv\Scripts\activate.bat
 pip install -r requirements.txt
 ```
 
@@ -115,7 +115,7 @@ Only these are needed:
 
 ```
 cd rent
-.venv\Scriptsctivate        (macOS/Linux: source .venv/bin/activate)
+.venv\Scripts\activate        (macOS/Linux: source .venv/bin/activate)
 streamlit run app.py
 ```
 
