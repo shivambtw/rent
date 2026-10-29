@@ -34,6 +34,7 @@ You need **Java 17+ (a JDK)** and **Python 3.9+**. Copy and run the commands in 
 ```
 git clone https://github.com/shivambtw/rent.git
 cd rent
+git checkout feature/customers-coupons-late-fees   # only needed until the PR is merged into main
 ```
 
 ### Step 2: check Java and Python
@@ -78,7 +79,13 @@ pip install -r requirements.txt
 
 The jar committed in `dist/` is from the original basic version and is too old for this UI, so rebuild it:
 
-**Windows:**
+**Windows (PowerShell):**
+
+```
+.uild.bat
+```
+
+**Windows (cmd):**
 
 ```
 build.bat
