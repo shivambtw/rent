@@ -1,9 +1,11 @@
 """Streamlit UI for RentEase. All data and business rules live in the Java program
 (dist/rentease.jar); this file only draws the screens. See backend.py for the bridge."""
 from datetime import date, timedelta
+import os
 
 import pandas as pd
 import streamlit as st
+from supabase import Client, create_client
 
 from backend import JavaBackend
 
@@ -12,13 +14,64 @@ st.set_page_config(page_title="RentEase", page_icon="🛠️", layout="wide")
 st.markdown(
     """
     <style>
-      .block-container {padding-top: 2rem;}
-      [data-testid="stMetric"] {background: rgba(128,128,128,.08); border-radius: 12px; padding: 12px 16px;}
+      .block-container {padding-top: 2rem; max-width: 1400px;}
+      [data-testid="stMetric"] {background: linear-gradient(135deg, rgba(99,102,241,.14), rgba(20,184,166,.08)); border: 1px solid rgba(148,163,184,.18); border-radius: 14px; padding: 14px 16px;}
+      [data-testid="stSidebar"] {border-right: 1px solid rgba(148,163,184,.16);}
+      div[data-testid="stForm"] {border: 1px solid rgba(148,163,184,.18); border-radius: 14px; padding: 1rem;}
+      h1, h2, h3 {letter-spacing: -0.025em;}
     </style>
     """,
     unsafe_allow_html=True,
 )
 
+
+@st.cache_resource
+def supabase() -> Client:
+    return create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_ANON_KEY"])
+
+
+def auth_screen() -> bool:
+    if "auth_session" in st.session_state:
+        return True
+    st.markdown("# RentEase")
+    st.caption("Secure rental operations for your team")
+    login, signup = st.tabs(["Sign in", "Create staff account"])
+    with login:
+        with st.form("login_form"):
+            email = st.text_input("Work email")
+            password = st.text_input("Password", type="password")
+            submitted = st.form_submit_button("Sign in", type="primary", use_container_width=True)
+        if submitted:
+            try:
+                result = supabase().auth.sign_in_with_password({"email": email, "password": password})
+                st.session_state["auth_session"] = result.session
+                st.session_state["auth_user"] = result.user
+                st.rerun()
+            except Exception:
+                st.error("Invalid email or password. If this is a new account, confirm your email first.")
+    with signup:
+        with st.form("signup_form"):
+            name = st.text_input("Full name")
+            email = st.text_input("Work email", key="signup_email")
+            password = st.text_input("Password", type="password", key="signup_password")
+            submitted = st.form_submit_button("Create account", use_container_width=True)
+        if submitted:
+            try:
+                result = supabase().auth.sign_up({"email": email, "password": password,
+                                                   "options": {"data": {"full_name": name}}})
+                if result.user:
+                    st.success("Account created. Check your email to confirm it, then sign in.")
+            except Exception:
+                st.error("We could not create that account. Use a valid email and a stronger password.")
+    return False
+
+
+if not auth_screen():
+    st.stop()
+
+user = st.session_state["auth_user"]
+profile = supabase().table("profiles").select("full_name, role").eq("id", user.id).maybe_single().execute().data or {}
+role = profile.get("role", "staff")
 
 @st.cache_resource
 def backend() -> JavaBackend:
@@ -97,7 +150,12 @@ def show_bill(b: dict):
 
 
 # ---------------- Sidebar navigation ----------------
-st.sidebar.title("🛠️ RentEase")
+st.sidebar.title("RentEase")
+st.sidebar.caption(f"{profile.get('full_name') or user.email} · {role.title()}")
+if st.sidebar.button("Sign out", use_container_width=True):
+    supabase().auth.sign_out()
+    st.session_state.clear()
+    st.rerun()
 page = st.sidebar.radio(
     "Go to",
     ["📊 Dashboard", "📦 Equipment", "👤 Customers", "➕ New rental", "↩️ Return & extend",
