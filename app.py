@@ -72,6 +72,7 @@ if not auth_screen():
 user = st.session_state["auth_user"]
 profile = supabase().table("profiles").select("full_name, role").eq("id", user.id).maybe_single().execute().data or {}
 role = profile.get("role", "staff")
+can_admin = role == "admin"
 
 @st.cache_resource
 def backend() -> JavaBackend:
@@ -270,10 +271,13 @@ elif page == "📦 Equipment":
                 if safe(lambda: api.call("SET_MAINTENANCE", pick["id"], 1)):
                     flash(f"{pick['name']} is now under maintenance.")
                     st.rerun()
-            if b2.button("🗑️ Delete (only if never rented)"):
-                if safe(lambda: api.call("DELETE_ITEM", pick["id"])):
-                    flash(f"Deleted {pick['name']}.")
-                    st.rerun()
+            if can_admin:
+                if b2.button("🗑️ Delete (only if never rented)"):
+                    if safe(lambda: api.call("DELETE_ITEM", pick["id"])):
+                        flash(f"Deleted {pick['name']}.")
+                        st.rerun()
+            else:
+                b2.caption("Only admins can delete equipment.")
 
 # ================= Customers =================
 elif page == "👤 Customers":
